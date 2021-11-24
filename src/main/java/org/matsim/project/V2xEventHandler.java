@@ -22,12 +22,26 @@ class V2xEventHandler implements LinkEnterEventHandler, LinkLeaveEventHandler, V
 
 	private final Map<Id<Vehicle>,V2xVehicle> allVehicles = new LinkedHashMap<>();
 	private final Map<Id<Link>, List<V2xVehicle>> vehiclesOnLink = new LinkedHashMap<>();
+	private final Map<Id<Link>, List<Link>> opposingLinks = new LinkedHashMap<>();
+
 	private final Network network;
 	private final EventsManager events;
 	private double lastTime = Double.NEGATIVE_INFINITY;
+
 	public V2xEventHandler( Scenario scenario, EventsManager events ){
 		this.network = scenario.getNetwork();
 		this.events = events;
+
+		for (Link link : network.getLinks().values()) {
+
+			opposingLinks.put(link.getId(), new ArrayList<>());
+
+			for( Link outgoingLink : link.getToNode().getOutLinks().values() ){
+				if ( outgoingLink.getToNode().equals( link.getFromNode() ) ) {
+					opposingLinks.get(link.getId()).add( outgoingLink );
+				}
+			}
+		}
 	}
 
 	// vehicles can either enter/leave the link via intersections, or they can enter/leave from a parking lot or similar:
@@ -60,10 +74,13 @@ class V2xEventHandler implements LinkEnterEventHandler, LinkLeaveEventHandler, V
 //			}
 //		}
 
-		if ( vehicleId.toString().equals( "149341201" ) ) {
-			vehicle.addMessage( new V2xMessage( "msg" ) );
-			this.events.processEvent( new PersonEntersVehicleEvent( now, Id.createPersonId( "dummy" ), vehicle.getId() ) );
-			// (we add a dummy passenger every time this happens since we can color-code according to this)
+		// Initialize one message for chosen vehicles
+		if ( vehicleId.toString().equals( "149341201" ) || vehicleId.toString().equals("360641201") || vehicleId.toString().equals("400032201") ) {
+			if (vehicle.getMessages().isEmpty()) {
+				vehicle.addMessage( new V2xMessage( "msg-" + vehicleId ) );
+				this.events.processEvent( new PersonEntersVehicleEvent( now, Id.createPersonId( "dummy" ), vehicle.getId() ) );
+				// (we add a dummy passenger every time this happens since we can color-code according to this)
+			}
 		}
 
 		// when a vehicle enters a link, we first add it to the data structure ...
@@ -73,7 +90,7 @@ class V2xEventHandler implements LinkEnterEventHandler, LinkLeaveEventHandler, V
 		}
 
 		// ... and then compute interaction with vehicles on opposing links:
-		List<Link> opposingLinks = getAllOpposingLinks( linkId, network );
+		List<Link> opposingLinks = this.opposingLinks.get(linkId);
 		for( Link opposingLink : opposingLinks ){
 			List<V2xVehicle> vehicles = this.vehiclesOnLink.get( opposingLink.getId() );
 			if ( vehicles != null ){
@@ -88,22 +105,22 @@ class V2xEventHandler implements LinkEnterEventHandler, LinkLeaveEventHandler, V
 	}
 	@Override public void handleEvent( Event event ){
 		if ( event.getTime() > lastTime ) {
-			for(  Map.Entry<Id<Link>, List<V2xVehicle>> entry : vehiclesOnLink.entrySet() ){
-				StringBuilder strb = new StringBuilder().append("time=").append(event.getTime()).append( "; Link=" ).append( entry.getKey() ).append( " -- " );
-				boolean toPrint = false ;
-				for( V2xVehicle vehicle : entry.getValue() ) {
-					if ( !vehicle.getMessages().isEmpty() ){
-						toPrint = true;
-						strb.append( "|vehicleId=" ).append(vehicle.getId() ).append( "|" );
-						for( V2xMessage message : vehicle.getMessages() ){
-							strb.append("|").append( message.getMessage() ).append( "|" );
-						}
-					}
-				}
-				if ( toPrint ){
+//			for(  Map.Entry<Id<Link>, List<V2xVehicle>> entry : vehiclesOnLink.entrySet() ){
+//				StringBuilder strb = new StringBuilder().append("time=").append(event.getTime()).append( "; Link=" ).append( entry.getKey() ).append( " -- " );
+//				boolean toPrint = false ;
+//				for( V2xVehicle vehicle : entry.getValue() ) {
+//					if ( !vehicle.getMessages().isEmpty() ){
+//						toPrint = true;
+//						strb.append( "|vehicleId=" ).append(vehicle.getId() ).append( "|" );
+//						for( V2xMessage message : vehicle.getMessages() ){
+//							strb.append("|").append( message.getMessage() ).append( "|" );
+//						}
+//					}
+//				}
+//				if ( toPrint ){
 //					System.out.println( strb );
-				}
-			}
+//				}
+//			}
 
 			lastTime = event.getTime();
 		}
@@ -119,14 +136,18 @@ class V2xEventHandler implements LinkEnterEventHandler, LinkLeaveEventHandler, V
 		}
 
 		// here we just all messages that a vehicle has to all opposing vehicles:
-		for( V2xMessage message : opposingVehicle.getMessages() ){
-			vehicle.addMessage( message );
-			this.events.processEvent( new PersonEntersVehicleEvent( now, Id.createPersonId( "dummy" ), vehicle.getId() ) );
+		for (V2xMessage message : opposingVehicle.getMessages()) {
+			if (vehicle.addMessage(message)) {
+				this.events.processEvent(new PersonEntersVehicleEvent(now, Id.createPersonId("dummy"), vehicle.getId()));
+			}
 			// (we add a dummy passenger every time this happens since we can color-code according to this)
 		}
 		for( V2xMessage message : vehicle.getMessages() ){
-			opposingVehicle.addMessage( message );
-			this.events.processEvent( new PersonEntersVehicleEvent( now, Id.createPersonId( "dummy" ), opposingVehicle.getId() ) );
+
+			if (opposingVehicle.addMessage(message)) {
+				this.events.processEvent(new PersonEntersVehicleEvent(now, Id.createPersonId("dummy"), opposingVehicle.getId()));
+			}
+
 		}
 
 	}
@@ -136,17 +157,6 @@ class V2xEventHandler implements LinkEnterEventHandler, LinkLeaveEventHandler, V
 		Collection<V2xVehicle> vehicles = vehiclesOnLink.get( linkId );
 		Gbl.assertNotNull(vehicles); // should not happen, but who knows
 		vehicles.remove( allVehicles.get( vehicleId ) );
-	}
-
-	static List<Link> getAllOpposingLinks( Id<Link> linkId, Network network ) {
-		Link link = network.getLinks().get( linkId );
-		List<Link> opposingLinks = new ArrayList<>();
-		for( Link outgoingLink : link.getToNode().getOutLinks().values() ){
-			if ( outgoingLink.getToNode().equals( link.getFromNode() ) ) {
-				opposingLinks.add( outgoingLink );
-			}
-		}
-		return opposingLinks;
 	}
 
 }

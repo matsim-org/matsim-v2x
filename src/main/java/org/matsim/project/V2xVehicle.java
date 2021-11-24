@@ -4,27 +4,26 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Identifiable;
 import org.matsim.vehicles.Vehicle;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 class V2xVehicle implements Identifiable<Vehicle> {
 	private final Id<Vehicle> vehicleId;
-	private final List<V2xMessage> messages = new ArrayList<>();
+	private final Set<V2xMessage> messages = new HashSet<>();
 	public V2xVehicle( Id<Vehicle> vehicleId ){
 		this.vehicleId = vehicleId;
 	}
 	public Id<Vehicle> getId(){
 		return vehicleId;
 	}
-	public void addMessage( V2xMessage message ) {
-		messages.add( message );
+
+	/**
+	 * Add message to the vehicle.
+	 * @return true whether the message was not already known
+	 */
+	public boolean addMessage( V2xMessage message ) {
+		return messages.add( message );
 	}
-	public void addMessages( Collection<V2xMessage> messages ) {
-		this.messages.addAll( messages );
-	}
-	public List<V2xMessage> getMessages() {
-		return Collections.unmodifiableList( messages );
+	public Collection<V2xMessage> getMessages() {
+		return Collections.unmodifiableCollection( messages );
 	}
 }
