@@ -1,5 +1,6 @@
 package org.matsim.project;
 
+import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.events.*;
@@ -19,6 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 class V2xEventHandler implements LinkEnterEventHandler, LinkLeaveEventHandler, VehicleEntersTrafficEventHandler, VehicleLeavesTrafficEventHandler, BasicEventHandler{
 	private static final AtomicInteger counter = new AtomicInteger(0);
+	private static final Logger log = Logger.getLogger( V2xEventHandler.class );
 
 	private final Map<Id<Vehicle>,V2xVehicle> allVehicles = new LinkedHashMap<>();
 	private final Map<Id<Link>, List<V2xVehicle>> vehiclesOnLink = new LinkedHashMap<>();
@@ -67,21 +69,23 @@ class V2xEventHandler implements LinkEnterEventHandler, LinkLeaveEventHandler, V
 		V2xVehicle vehicle = allVehicles.computeIfAbsent( vehicleId , V2xVehicle::new );
 
 		// give some vehicles some messages to initialize the process:
-//		if ( !vehicleId.toString().contains( "tr_" )  && vehicle.getMessages().isEmpty() ){
-//			int ii = counter.incrementAndGet();
-//			if ( ii<100 ){
-//				vehicle.addMessage( new V2xMessage( Integer.toString( ii ) ) );
-//			}
-//		}
-
-		// Initialize one message for chosen vehicles
-		if ( vehicleId.toString().equals( "149341201" ) || vehicleId.toString().equals("360641201") || vehicleId.toString().equals("400032201") ) {
-			if (vehicle.getMessages().isEmpty()) {
-				vehicle.addMessage( new V2xMessage( "msg-" + vehicleId ) );
+		if ( !vehicleId.toString().contains( "tr_" )  && vehicle.getMessages().isEmpty() ){
+			int ii = counter.incrementAndGet();
+			if ( ii<10 ){
+				vehicle.addMessage( new V2xMessage( Integer.toString( ii ) ) );
 				this.events.processEvent( new PersonEntersVehicleEvent( now, Id.createPersonId( "dummy" ), vehicle.getId() ) );
 				// (we add a dummy passenger every time this happens since we can color-code according to this)
 			}
 		}
+
+		// Initialize one message for chosen vehicles
+//		if ( vehicleId.toString().equals( "149341201" ) || vehicleId.toString().equals("360641201") || vehicleId.toString().equals("400032201") ) {
+//			if (vehicle.getMessages().isEmpty()) {
+//				vehicle.addMessage( new V2xMessage( "msg-" + vehicleId ) );
+//				this.events.processEvent( new PersonEntersVehicleEvent( now, Id.createPersonId( "dummy" ), vehicle.getId() ) );
+//				// (we add a dummy passenger every time this happens since we can color-code according to this)
+//			}
+//		}
 
 		// when a vehicle enters a link, we first add it to the data structure ...
 		{
@@ -132,7 +136,7 @@ class V2xEventHandler implements LinkEnterEventHandler, LinkLeaveEventHandler, V
 		}
 
 		if ( !vehicle.getMessages().isEmpty() || !opposingVehicle.getMessages().isEmpty() ){
-//			System.out.println( "Interaction between " + vehicle.getId() + " and " + opposingVehicle.getId() );
+			log.info( "time=" + now + "; Interaction between " + vehicle.getId() + " and " + opposingVehicle.getId() );
 		}
 
 		// here we just all messages that a vehicle has to all opposing vehicles:
