@@ -1,6 +1,8 @@
-# matsim-example-project
+# matsim-v2x
 
-A small example of how to use MATSim as a library.
+A small example of how to use MATSim for simulations of vehicle-to-X communication.  
+
+The approach in this repository uses pre-existing vehicle trajectories as input, i.e. it is _not_ running MATSim.
 
 By default, this project uses the latest (pre-)release. In order to use a different version, edit `pom.xml`.
 
